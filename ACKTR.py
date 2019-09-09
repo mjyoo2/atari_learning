@@ -1,5 +1,7 @@
 from stable_baselines.acktr.acktr_disc import *
 
+game_id = 'Breakout-v0'
+
 class checkpoint_ACKTR(ACKTR):
     def learn(self, total_timesteps, callback=None, seed=None, log_interval=100, tb_log_name="ACKTR",
               reset_num_timesteps=True):
@@ -74,7 +76,7 @@ class checkpoint_ACKTR(ACKTR):
                         break
 
                 if update % 1000 == 0:
-                    self.save('/model/{}_{}_ACKTR'.format('Breakout', update))
+                    self.save('/model/Atari_game/{}/{}_{}_ACKTR'.format(self.env.game_id, self.env.game_id, update))
 
                 if self.verbose >= 1 and (update % log_interval == 0 or update == 1):
                     explained_var = explained_variance(values, rewards)
