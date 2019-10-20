@@ -1,6 +1,25 @@
 from stable_baselines.deepq.dqn import *
 from stable_baselines.a2c.utils import conv, conv_to_fc, linear
-from keras.layers import MaxPooling2D, AveragePooling2D
+from keras.layers import MaxPooling2D, AveragePooling2D, add
+
+def ResBlock(input, filters, name, activ = tf.nn.relu, **kwargs):
+    layer_1 = conv(input, name+'_layer_1', n_filters = filters, filter_size=3, stride=1, init_scale=np.sqrt(2), pad= 'SAME', **kwargs)
+    layer_1 = activ(tf.layers.batch_normalization(layer_1))
+    layer_2 = conv(layer_1, name+'_layer_2', n_filters = filters, filter_size=3, stride=1, init_scale=np.sqrt(2), pad= 'SAME', **kwargs)
+    layer_2 = tf.layers.batch_normalization(layer_2)
+    output_layer = activ(tf.add(input, layer_2))
+    return output_layer
+
+def ResBlock_x2(input, filters, name, activ = tf.nn.relu, **kwargs):
+    layer_1 = conv(input, name+'_layer_1', n_filters = filters, filter_size=3, stride=2, init_scale=np.sqrt(2), pad= 'SAME', **kwargs)
+    layer_1 = activ(tf.layers.batch_normalization(layer_1))
+    layer_2 = conv(layer_1, name+'_layer_2', n_filters = filters, filter_size=3, stride=1, init_scale=np.sqrt(2), pad= 'SAME', **kwargs)
+    layer_2 = tf.layers.batch_normalization(layer_2)
+    input = conv(input, name+'_input', n_filters = filters, filter_size=1 ,stride=2, init_scale=np.sqrt(2), pad= 'SAME', **kwargs)
+    input = tf.layers.batch_normalization(input)
+    output_layer = activ(tf.add(input, layer_2))
+    return output_layer
+
 
 def nature_cnn_ex(scaled_images, **kwargs):
     """
@@ -10,23 +29,19 @@ def nature_cnn_ex(scaled_images, **kwargs):
     :return: (TensorFlow Tensor) The CNN output layer
     """
     activ = tf.nn.relu
-    layer_1 = conv(scaled_images, 'c1', n_filters=32, filter_size=7, stride=2, init_scale=np.sqrt(2), pad='SAME', **kwargs)
-    layer_1 = activ(layer_1)
-    layer_2 = conv(layer_1, 'c2', n_filters=64, filter_size=3, stride=1, init_scale=np.sqrt(2), pad='SAME', **kwargs)
-    layer_2 = conv(layer_2, 'c2_2', n_filters=64, filter_size=3, stride=1, init_scale=np.sqrt(2), pad='SAME', **kwargs)
-    layer_2 = activ(tf.layers.batch_normalization(layer_2))
-    layer_2 = tf.nn.max_pool(layer_2, (3, 2), (2, 2), "VALID")
-    layer_3 = conv(layer_2, 'c31', n_filters=16, filter_size=1, stride=1, init_scale=np.sqrt(2), **kwargs)
-    layer_3 = conv(layer_3, 'c3', n_filters=64, filter_size=3, stride=1, init_scale=np.sqrt(2), **kwargs)
-    layer_3 = activ(layer_3)
-    layer_3 = tf.nn.max_pool(layer_3, (2, 2), (2, 2), "VALID")
-    layer_4 = conv(layer_3, 'c41', n_filters=16, filter_size=1, stride=1, init_scale=np.sqrt(2), **kwargs)
-    layer_4 = conv(layer_4, 'c4', n_filters=64, filter_size=3, stride=1, init_scale=np.sqrt(2), **kwargs)
-    layer_4 = activ(tf.layers.batch_normalization(layer_4))
-    layer_4 = tf.nn.avg_pool(layer_4, (7, 7), (1, 1), 'VALID')
-    layer_4 = conv_to_fc(layer_4)
-    return activ(linear(layer_4, 'fc1', n_hidden=128, init_scale=np.sqrt(2)))
-
+    layer_1 = conv(scaled_images, 'c1', n_filters=64, filter_size=7, stride=2, init_scale=np.sqrt(2), pad='SAME', **kwargs)
+    layer_1 = tf.layers.max_pooling2d(layer_1, pool_size=(3, 3), strides=(2, 2))
+    resblock_1 = ResBlock(layer_1, 64, 'resblock_1', **kwargs)
+    resblock_2 = ResBlock(resblock_1, 64, 'resblock_2', **kwargs)
+    resblock_3 = ResBlock(resblock_2, 64, 'resblock_3', **kwargs)
+    resblock_4 = ResBlock_x2(resblock_3, 128, 'resblock_4', **kwargs)
+    resblock_5 = ResBlock(resblock_4, 128, 'resblock_5', **kwargs)
+    resblock_6 = ResBlock(resblock_5, 128, 'resblock_6', **kwargs)
+    resblock_7 = ResBlock_x2(resblock_6, 256, 'resblock_7', **kwargs)
+    resblock_8 = ResBlock(resblock_7, 256, 'resblock_8', **kwargs)
+    resblock_9 = ResBlock(resblock_8, 256, 'resblock_9', **kwargs)
+    output = tf.layers.average_pooling2d(resblock_9, pool_size=(7, 5), strides=(1, 1))
+    return conv_to_fc(output)
 
 def nature_cnn_ex2(scaled_images, **kwargs):
     """
@@ -39,16 +54,19 @@ def nature_cnn_ex2(scaled_images, **kwargs):
     layer_1 = conv(scaled_images, 'c1', n_filters=32, filter_size=8,  stride=4, init_scale=np.sqrt(2), pad='SAME', **kwargs)
     layer_1 = activ(layer_1)
     layer_2 = conv(layer_1, 'c2', n_filters=64, filter_size=4, stride=2, init_scale=np.sqrt(2), pad='SAME', **kwargs)
+    layer_2 = activ(tf.layers.batch_normalization(layer_2))
     layer_2 = conv(layer_2, 'c2_1', n_filters=16, filter_size=1, stride=1, init_scale=np.sqrt(2), pad='SAME', **kwargs)
+    layer_2 = activ(tf.layers.batch_normalization(layer_2))
     layer_2 = conv(layer_2, 'c2_2', n_filters=64, filter_size=3, stride=1, init_scale=np.sqrt(2), pad='SAME', **kwargs)
     layer_2 = activ(tf.layers.batch_normalization(layer_2))
     layer_2 = tf.nn.max_pool(layer_2, (3, 2), (2, 2), "VALID")
     layer_3 = conv(layer_2, 'c31', n_filters=32, filter_size=1, stride=1, init_scale=np.sqrt(2), **kwargs)
+    layer_3 = activ(tf.layers.batch_normalization(layer_3))
     layer_3 = conv(layer_3, 'c3', n_filters=128, filter_size=3, stride=1, init_scale=np.sqrt(2), **kwargs)
-    layer_3 = activ(layer_3)
+    layer_3 = activ(tf.layers.batch_normalization(layer_3))
     layer_4 = tf.nn.avg_pool(layer_3, (4, 3), (1, 1), 'VALID')
     layer_4 = conv_to_fc(layer_4)
-    return activ(linear(layer_4, 'fc1', n_hidden=128, init_scale=np.sqrt(2)))
+    return layer_4
 
 class AtariDQN(DQN):
 

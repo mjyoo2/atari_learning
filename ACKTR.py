@@ -1,9 +1,9 @@
 from stable_baselines.acktr.acktr_disc import *
 
-game_id = 'Breakout-v0'
+game_id = 'Boxing-v0'
 
 class checkpoint_ACKTR(ACKTR):
-    def learn(self, total_timesteps, callback=None, seed=None, log_interval=100, tb_log_name="ACKTR",
+    def learn(self, total_timesteps, game_id, callback=None, seed=None, log_interval=100, tb_log_name="ACKTR",
               reset_num_timesteps=True):
 
         new_tb_log = self._init_num_timesteps(reset_num_timesteps)
@@ -76,7 +76,7 @@ class checkpoint_ACKTR(ACKTR):
                         break
 
                 if update % 1000 == 0:
-                    self.save('/model/Atari_game/{}/{}_{}_ACKTR'.format(self.env.game_id, self.env.game_id, update))
+                    self.save('/model/Atari_game/{}/{}_{}_ACKTR'.format(game_id, game_id, update))
 
                 if self.verbose >= 1 and (update % log_interval == 0 or update == 1):
                     explained_var = explained_variance(values, rewards)
